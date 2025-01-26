@@ -1,0 +1,423 @@
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\app.js ---
+const express = require("express");
+const cors = require("cors");
+const authRoutes = require("./routes/authRoutes");
+const otpRoutes = require("./routes/otpRoutes");
+const userRoutes = require("./routes/userRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/auth", authRoutes);
+app.use("/api/otp", otpRoutes);
+app.use("/api/user", userRoutes);
+
+module.exports = app;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\config\db.js ---
+const { Pool } = require("pg");
+require("dotenv").config();
+
+const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_DATABASE,
+  password: process.env.DB_PASSWORD,
+  port: process.env.DB_PORT,
+});
+
+module.exports = pool;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\config\mailer.js ---
+const nodemailer = require("nodemailer");
+require("dotenv").config();
+
+const transporter = nodemailer.createTransport({
+  host: process.env.MAILTRAP_HOST,
+  port: process.env.MAILTRAP_PORT,
+  secure: true,
+  auth: {
+    user: process.env.MAILTRAP_USER,
+    pass: process.env.MAILTRAP_PASS,
+  },
+});
+
+module.exports = transporter;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\authController.js ---
+const User = require("../models/User");
+const { hashPassword, verifyPassword } = require("../utils/passwordUtils");
+const { generateToken } = require("../utils/jwtUtils");
+const logger = require("../utils/logger");
+
+const authController = {
+  async checkUser(req, res) {
+    const { email } = req.body;
+
+    if (!email) {
+      logger.warn("Email is required");
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    logger.info(`Checking user with email: ${email}`);
+
+    try {
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const passwordExists = user.password !== null;
+      res.json({ passwordExists });
+    } catch (error) {
+      logger.error(`Error checking user: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  async login(req, res) {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      logger.warn("Email and password are required");
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    logger.info(`Login attempt for email: ${email}`);
+
+    try {
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const isPasswordMatch = verifyPassword(password, user.name, user.id, user.password);
+      if (!isPasswordMatch) {
+        logger.warn(`Invalid password for email: ${email}`);
+        return res.status(401).json({ error: "Invalid password" });
+      }
+
+      const token = generateToken({ id: user.id, email: user.work_email });
+      logger.info(`Login successful for email: ${email}`);
+      res.json({ token });
+    } catch (error) {
+      logger.error(`Error during login: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  async setPassword(req, res) {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      logger.warn("Email and new password are required");
+      return res.status(400).json({ error: "Email and new password are required" });
+    }
+
+    logger.info(`Setting new password for email: ${email}`);
+
+    try {
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const passwordHash = hashPassword(newPassword, user.name, user.id);
+      await User.updatePassword(email, passwordHash);
+
+      const token = generateToken({ email });
+      logger.info(`Password set successfully for email: ${email}`);
+      res.json({ token });
+    } catch (error) {
+      logger.error(`Error setting password: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+};
+
+module.exports = authController;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\otpController.js ---
+const User = require("../models/User");
+const { sendEmail } = require("../services/mailService");
+const logger = require("../utils/logger");
+
+const otpController = {
+  async sendOTP(req, res) {
+    const { email } = req.body;
+    logger.info(`Sending OTP to email: ${email}`);
+
+    try {
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();      
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await User.createOTP(email, otp, expiresAt);
+      await sendEmail(email, "Your OTP for Password Reset", `Your OTP is: ${otp}`);
+
+      logger.info(`OTP sent to ${email}`);
+      res.json({ message: "OTP sent" });
+    } catch (error) {
+      logger.error(`Error sending OTP: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
+  async verifyOTP(req, res) {
+    const { email, otp } = req.body;
+    logger.info(`Verifying OTP for email: ${email}`);
+
+    try {
+      const otpData = await User.verifyOTP(email, otp);
+      if (!otpData || otpData.otp !== otp || new Date() > otpData.expires_at) {
+        logger.warn(`Invalid OTP or OTP expired for email: ${email}`);
+        return res.status(400).json({ error: "Invalid OTP or OTP expired" });
+      }
+
+      logger.info(`OTP verified for email: ${email}`);
+      res.json({ message: "OTP verified" });
+    } catch (error) {
+      logger.error(`Error verifying OTP: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+};
+
+module.exports = otpController;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\userController.js ---
+const User = require("../models/User");
+const { verifyToken } = require("../utils/jwtUtils");
+const logger = require("../utils/logger");
+
+const userController = {
+  async getUserData(req, res) {
+    const { token } = req.body;
+
+    try {
+      const decoded = verifyToken(token);
+      const { email } = decoded;
+
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      logger.info(`User data fetched for email: ${email}`);
+      res.json({ data: user });
+    } catch (error) {
+      logger.error(`Error fetching user data: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+};
+
+module.exports = userController;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\middleware\authMiddleware.js ---
+const { verifyToken } = require("../utils/jwtUtils");
+
+const authMiddleware = (req, res, next) => {
+  const token = req.header("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.status(401).json({ error: "No token, authorization denied" });
+  }
+
+  try {
+    const decoded = verifyToken(token);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ error: "Token is not valid" });
+  }
+};
+
+module.exports = authMiddleware;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\models\User.js ---
+const pool = require("../config/db");
+
+const User = {
+  async findByEmail(email) {
+    const result = await pool.query(
+      "SELECT id, name, work_email, password FROM hr_employee WHERE work_email = $1",
+      [email]
+    );
+    return result.rows[0];
+  },
+
+  async updatePassword(email, passwordHash) {
+    await pool.query(
+      "UPDATE hr_employee SET password = $1 WHERE work_email = $2",
+      [passwordHash, email]
+    );
+  },
+
+  async createOTP(email, otp, expiresAt) {
+    await pool.query(
+      "INSERT INTO hr_user_mobile_otps (username, otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (username) DO UPDATE SET otp = $2, expires_at = $3",
+      [email, otp, expiresAt]
+    );
+  },
+
+  async verifyOTP(email, otp) {
+    const result = await pool.query(
+      "SELECT otp, expires_at FROM hr_user_mobile_otps WHERE username = $1",
+      [email]
+    );
+    return result.rows[0];
+  },
+};
+
+module.exports = User;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\authRoutes.js ---
+const express = require("express");
+const authController = require("../controllers/authController");
+
+const router = express.Router();
+
+router.post("/checkuser", authController.checkUser);
+router.post("/login", authController.login);
+router.post("/setpassword", authController.setPassword);
+
+module.exports = router;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\otpRoutes.js ---
+const express = require("express");
+const otpController = require("../controllers/otpController");
+
+const router = express.Router();
+
+router.post("/sendotp", otpController.sendOTP);
+router.post("/verifyotp", otpController.verifyOTP);
+
+module.exports = router;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\userRoutes.js ---
+const express = require("express");
+const authMiddleware = require("../middleware/authMiddleware");
+const userController = require("../controllers/userController");
+
+const router = express.Router();
+
+router.post("/userdata", authMiddleware, userController.getUserData);
+
+module.exports = router;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\server.js ---
+const app = require('./app');
+const port = process.env.PORT;
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\services\mailService.js ---
+const transporter = require("../config/mailer");
+
+const sendEmail = async (to, subject, text) => {
+  const mailOptions = {
+    from: process.env.MAIL_FROM,
+    to,
+    subject,
+    text,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+module.exports = { sendEmail };
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\utils\jwtUtils.js ---
+const jwt = require("jsonwebtoken");
+require("dotenv").config();
+
+const generateToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+};
+
+const verifyToken = (token) => {
+  return jwt.verify(token, process.env.JWT_SECRET);
+};
+
+module.exports = { generateToken, verifyToken };
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\utils\logger.js ---
+const logger = {
+    info: (message) => console.log(`[INFO] ${message}`),
+    warn: (message) => console.warn(`[WARN] ${message}`),
+    error: (message) => console.error(`[ERROR] ${message}`),
+  };
+  
+  module.exports = logger;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\utils\passwordUtils.js ---
+const crypto = require("crypto");
+
+const hashPassword = (password, name, id) => {
+  const salt = `${name}${id}`;
+  const iterations = 600000;
+  const keylen = 64; // 512 bits
+  const digest = "sha512";
+
+  const hash = crypto.pbkdf2Sync(password, salt, iterations, keylen, digest);
+  return hash.toString("hex");
+};
+
+const verifyPassword = (inputPassword, name, id, storedHash) => {
+  if (typeof inputPassword !== "string") {
+    throw new TypeError("The password must be a string");
+  }
+
+  const inputHash = hashPassword(inputPassword, name, id);
+  return inputHash === storedHash;
+};
+
+module.exports = { hashPassword, verifyPassword };
+
+//app.js
+const express = require("express");
+const cors = require("cors");
+const authRoutes = require("./routes/authRoutes");
+const otpRoutes = require("./routes/otpRoutes");
+const userRoutes = require("./routes/userRoutes");
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.use("/api/auth", authRoutes);
+app.use("/api/otp", otpRoutes);
+app.use("/api/user", userRoutes);
+
+module.exports = app;

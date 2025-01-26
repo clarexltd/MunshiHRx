@@ -11,6 +11,10 @@ const hashPassword = (password, name, id) => {
 };
 
 const verifyPassword = (inputPassword, name, id, storedHash) => {
+  if (typeof inputPassword !== "string") {
+    throw new TypeError("The password must be a string");
+  }
+
   const inputHash = hashPassword(inputPassword, name, id);
   return inputHash === storedHash;
 };

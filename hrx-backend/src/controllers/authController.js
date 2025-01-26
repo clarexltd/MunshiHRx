@@ -4,8 +4,39 @@ const { generateToken } = require("../utils/jwtUtils");
 const logger = require("../utils/logger");
 
 const authController = {
+  async checkUser(req, res) {
+    const { email } = req.body;
+
+    if (!email) {
+      logger.warn("Email is required");
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    logger.info(`Checking user with email: ${email}`);
+
+    try {
+      const user = await User.findByEmail(email);
+      if (!user) {
+        logger.warn(`User not found: ${email}`);
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const passwordExists = user.password !== null;
+      res.json({ passwordExists });
+    } catch (error) {
+      logger.error(`Error checking user: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+
   async login(req, res) {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      logger.warn("Email and password are required");
+      return res.status(400).json({ error: "Email and password are required" });
+    }
+
     logger.info(`Login attempt for email: ${email}`);
 
     try {
@@ -32,6 +63,12 @@ const authController = {
 
   async setPassword(req, res) {
     const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      logger.warn("Email and new password are required");
+      return res.status(400).json({ error: "Email and new password are required" });
+    }
+
     logger.info(`Setting new password for email: ${email}`);
 
     try {
@@ -49,6 +86,17 @@ const authController = {
       res.json({ token });
     } catch (error) {
       logger.error(`Error setting password: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+  async logout(req, res) {
+    try {
+      // In a real-world scenario, you might invalidate the token here (e.g., using a blacklist or Redis).
+      // For now, we'll just return a success message.
+      logger.info(`User logged out`);
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      logger.error(`Error during logout: ${error}`);
       res.status(500).json({ error: "Internal server error" });
     }
   },

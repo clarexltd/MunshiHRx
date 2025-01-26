@@ -1,10 +1,17 @@
 const User = require("../models/User");
 const { sendEmail } = require("../services/mailService");
+const crypto = require("crypto");
 const logger = require("../utils/logger");
 
 const otpController = {
   async sendOTP(req, res) {
     const { email } = req.body;
+
+    if (!email) {
+      logger.warn("Email is required");
+      return res.status(400).json({ error: "Email is required" });
+    }
+
     logger.info(`Sending OTP to email: ${email}`);
 
     try {
@@ -14,13 +21,13 @@ const otpController = {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();      
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // OTP expires in 15 minutes
 
       await User.createOTP(email, otp, expiresAt);
       await sendEmail(email, "Your OTP for Password Reset", `Your OTP is: ${otp}`);
 
-      logger.info(`OTP sent to ${email}`);
+      logger.info(`OTP sent to ${email} ${otp}`);
       res.json({ message: "OTP sent" });
     } catch (error) {
       logger.error(`Error sending OTP: ${error}`);
@@ -30,6 +37,12 @@ const otpController = {
 
   async verifyOTP(req, res) {
     const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      logger.warn("Email and OTP are required");
+      return res.status(400).json({ error: "Email and OTP are required" });
+    }
+
     logger.info(`Verifying OTP for email: ${email}`);
 
     try {

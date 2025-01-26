@@ -6,38 +6,61 @@ import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
-import { resetPassword } from "../services/api"
+import { setPassword } from "../services/api"
+import CustomAlert from "../components/CustomAlert"
 
-const NewPasswordScreen = ({ navigation, route }) => {
-  const [password, setPassword] = useState("")
+const SetPasswordScreen = ({ navigation, route }) => {
+  const [password, setPasswordState] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [loading, setLoading] = useState(false)
-  const { email, otp } = route.params
+  const [error, setError] = useState("")
+  const [showAlert, setShowAlert] = useState(false)
+  const { email, isReset } = route.params
 
   useCustomBackHandler("goBack")
 
-  const handleSetNewPassword = async () => {
+  const validatePassword = (password) => {
+    const minLength = 8
+    const hasUpperCase = /[A-Z]/.test(password)
+    const hasLowerCase = /[a-z]/.test(password)
+    const hasNumbers = /\d/.test(password)
+    const hasNonalphas = /\W/.test(password)
+    return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasNonalphas
+  }
+
+  const handleSetPassword = async () => {
     if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords don't match")
+      setError("Passwords don't match")
+      return
+    }
+
+    if (!validatePassword(password)) {
+      setError(
+        "Password must be at least 8 characters long and contain uppercase, lowercase, numbers, and special characters.",
+      )
       return
     }
 
     setLoading(true)
+    setError("")
     try {
-      await resetPassword(email, password, otp)
-      Alert.alert("Success", "Your password has been reset successfully", [
-        { text: "OK", onPress: () => navigation.navigate("Login") },
-      ])
+      await setPassword(email, password)
+      setLoading(false)
+      setShowAlert(true)
     } catch (error) {
-      Alert.alert("Error", error.toString())
-    } finally {
+      console.error("Set password error:", error.message)
+      setError(error.message)
       setLoading(false)
     }
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title="Set New Password" leftIcon="arrow-left" onLeftPress={() => navigation.goBack()} />
+      <Header
+        title={isReset ? "Reset Password" : "Set Password"}
+        leftIcon="arrow-left"
+        onLeftPress={() => navigation.goBack()}
+      />
 
       <View style={styles.content}>
         <View style={styles.card}>
@@ -47,14 +70,14 @@ const NewPasswordScreen = ({ navigation, route }) => {
             <TextInput
               style={styles.input}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={setPasswordState}
               placeholder="Enter new password"
               placeholderTextColor={colors.input.placeholder}
               secureTextEntry
             />
           </View>
 
-          <Text style={styles.label}>Confirm New Password</Text>
+          <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputContainer}>
             <Icon name="lock-outline" size={scale(18)} color={colors.text.secondary} style={styles.inputIcon} />
             <TextInput
@@ -67,15 +90,27 @@ const NewPasswordScreen = ({ navigation, route }) => {
             />
           </View>
 
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
           <PrimaryButton
-            title="Set New Password"
-            onPress={handleSetNewPassword}
+            title={isReset ? "Reset Password" : "Set Password"}
+            onPress={handleSetPassword}
             style={styles.button}
             loading={loading}
-            disabled={!password || !confirmPassword}
+            disabled={!password.trim() || !confirmPassword.trim()}
           />
         </View>
       </View>
+      <CustomAlert
+        visible={showAlert}
+        title="Success"
+        message={isReset ? "Your password has been reset successfully." : "Your password has been set successfully."}
+        onClose={() => setShowAlert(false)}
+        onConfirm={() => {
+          setShowAlert(false)
+          navigation.replace("Login")
+        }}
+      />
     </SafeAreaView>
   )
 }
@@ -130,12 +165,18 @@ const styles = StyleSheet.create({
     minHeight: verticalScale(48),
     textAlignVertical: "center",
   },
+  errorText: {
+    ...colors.typography.caption,
+    fontSize: moderateScale(12),
+    color: "red",
+    marginBottom: verticalScale(16),
+  },
   button: {
     backgroundColor: colors.button.primary,
     height: verticalScale(48),
-    marginTop: verticalScale(8),
+    marginTop: verticalScale(16),
   },
 })
 
-export default NewPasswordScreen
+export default SetPasswordScreen
 

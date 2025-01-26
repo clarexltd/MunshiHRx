@@ -1,8 +1,7 @@
-// App.js
-import React from 'react';
-import { SafeAreaView, StatusBar } from 'react-native';
-import AppNavigator from './src/navigation/AppNavigator';
-import { colors } from './src/styles/colors';
+import React from "react"
+import { SafeAreaView, StatusBar } from "react-native"
+import AppNavigator from "./src/navigation/AppNavigator"
+import { colors } from "./src/styles/colors"
 
 const App = () => {
   return (
@@ -12,7 +11,8 @@ const App = () => {
         <AppNavigator />
       </SafeAreaView>
     </>
-  );
-};
+  )
+}
 
-export default App;
+export default App
+

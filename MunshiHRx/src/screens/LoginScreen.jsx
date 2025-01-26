@@ -1,24 +1,36 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, ScrollView, SafeAreaView } from "react-native"
+import { View, Text, StyleSheet, TextInput, ScrollView, SafeAreaView, Alert } from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
+import { checkUser } from "../services/api"
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   useCustomBackHandler("exit")
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setLoading(true)
-    setTimeout(() => {
+    setError("")
+    try {
+      const { passwordExists } = await checkUser(email)
+      if (passwordExists) {
+        navigation.navigate("Password", { email, passwordExists })
+      } else {
+        navigation.navigate("OTP", { email, isNewUser: true })
+      }
+    } catch (error) {
+      console.error("Login error:", error.message)
+      setError(error.message)
+    } finally {
       setLoading(false)
-      navigation.navigate("Password", { email })
-    }, 1000)
+    }
   }
 
   return (
@@ -50,6 +62,7 @@ const LoginScreen = ({ navigation }) => {
               autoComplete="email"
             />
           </View>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <PrimaryButton
             title="Continue"
             onPress={handleContinue}
@@ -127,7 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(12),
     borderWidth: 1,
     borderColor: colors.input.border,
-    marginBottom: verticalScale(24),
+    marginBottom: verticalScale(16),
     minHeight: verticalScale(48),
     paddingVertical: verticalScale(2),
   },
@@ -144,6 +157,12 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(8),
     minHeight: verticalScale(48),
     textAlignVertical: "center",
+  },
+  errorText: {
+    ...colors.typography.caption,
+    fontSize: moderateScale(12),
+    color: "red",
+    marginBottom: verticalScale(16),
   },
   button: {
     backgroundColor: colors.button.primary,

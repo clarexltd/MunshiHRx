@@ -4,14 +4,14 @@ import { colors } from "../styles/colors"
 import HexagonLogo from "../components/icons/HexagonLogo"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 
-const SplashScreen = ({ navigation }) => {
+const SplashScreen = ({ onFinish }) => {
   const logoScale = useRef(new Animated.Value(0)).current
   const logoRotate = useRef(new Animated.Value(0)).current
   const textOpacity = useRef(new Animated.Value(0)).current
   const subtitleOpacity = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    Animated.parallel([
+    const animations = [
       Animated.spring(logoScale, {
         toValue: 1,
         tension: 10,
@@ -25,28 +25,28 @@ const SplashScreen = ({ navigation }) => {
         useNativeDriver: true,
         delay: 300,
       }),
-    ]).start()
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+        delay: 800,
+      }),
+      Animated.timing(subtitleOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+        delay: 1200,
+      }),
+    ]
 
-    Animated.timing(textOpacity, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-      delay: 800,
-    }).start()
-
-    Animated.timing(subtitleOpacity, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-      delay: 1200,
-    }).start()
+    Animated.parallel(animations).start()
 
     const timer = setTimeout(() => {
-      navigation.replace("Login")
+      onFinish()
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [onFinish, logoScale, logoRotate, textOpacity, subtitleOpacity])
 
   const spin = logoRotate.interpolate({
     inputRange: [0, 1],

@@ -6,17 +6,28 @@ import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { verifyOTP } from "../services/api"
 
 const OTPScreen = ({ navigation, route }) => {
   const [otp, setOtp] = useState("")
-  const { email } = route.params
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const { email, isReset, isNewUser } = route.params
 
   useCustomBackHandler("goBack")
 
-  const handleVerifyOTP = () => {
-    // Here you would typically verify the OTP with your backend
-    console.log("Verifying OTP for:", email)
-    navigation.navigate("NewPassword", { email, otp })
+  const handleVerifyOTP = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      await verifyOTP(email, otp)
+      navigation.navigate("SetPassword", { email, isReset, isNewUser })
+    } catch (error) {
+      console.error("Verify OTP error:", error.message)
+      setError(error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -26,8 +37,16 @@ const OTPScreen = ({ navigation, route }) => {
       <View style={styles.content}>
         <View style={styles.card}>
           <Icon name="shield-check-outline" size={scale(48)} color={colors.primary} style={styles.icon} />
-          <Text style={styles.title}>Enter Verification Code</Text>
-          <Text style={styles.subtitle}>We have sent a verification code to your email address:</Text>
+          <Text style={styles.title}>
+            {isNewUser ? "Verify Your Email" : isReset ? "Reset Password" : "Verify OTP"}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isNewUser
+              ? "We've sent a verification code to your email. Please enter it below to set up your account."
+              : isReset
+                ? "Enter the code we sent to reset your password."
+                : "Enter the verification code we sent to your email."}
+          </Text>
           <Text style={styles.email}>{email}</Text>
           <View style={styles.inputContainer}>
             <TextInput
@@ -40,10 +59,14 @@ const OTPScreen = ({ navigation, route }) => {
               maxLength={6}
             />
           </View>
-          <Text style={styles.resendText}>
-            Didn't receive the code? <Text style={styles.resendLink}>Resend</Text>
-          </Text>
-          <PrimaryButton title="Verify" onPress={handleVerifyOTP} style={styles.button} disabled={otp.length !== 6} />
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <PrimaryButton
+            title="Verify"
+            onPress={handleVerifyOTP}
+            style={styles.button}
+            disabled={otp.length !== 6}
+            loading={loading}
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -111,21 +134,16 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     ...colors.typography.body,
-    fontSize: moderateScale(16),
+    fontSize: moderateScale(18),
     color: colors.text.primary,
     textAlign: "center",
-    letterSpacing: scale(4),
+    letterSpacing: scale(8),
   },
-  resendText: {
+  errorText: {
     ...colors.typography.caption,
-    fontSize: moderateScale(14),
-    color: colors.text.secondary,
-    marginBottom: verticalScale(24),
-    textAlign: "center",
-  },
-  resendLink: {
-    color: colors.primary,
-    fontWeight: "bold",
+    fontSize: moderateScale(12),
+    color: "red",
+    marginBottom: verticalScale(16),
   },
   button: {
     backgroundColor: colors.button.primary,
