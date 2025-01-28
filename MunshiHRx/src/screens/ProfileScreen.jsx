@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useState } from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native"
@@ -6,20 +6,36 @@ import { Ionicons } from "@expo/vector-icons"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
-import { logout } from "../services/api"
+import { logout, getUserData } from "../services/api"
 
 const ProfileItem = ({ icon, title, value }) => (
   <View style={styles.profileItem}>
     <Ionicons name={icon} size={scale(24)} color={colors.primary} style={styles.itemIcon} />
     <View style={styles.itemContent}>
       <Text style={styles.itemTitle}>{title}</Text>
-      <Text style={styles.itemValue}>{value}</Text>
+      <Text style={styles.itemValue}>{value || "Not provided"}</Text>
     </View>
   </View>
 )
 
 const ProfileScreen = () => {
   const navigation = useNavigation()
+  const [userData, setUserData] = useState(null)
+
+  useEffect(() => {
+    fetchUserData()
+  }, [])
+
+  const fetchUserData = async () => {
+    try {
+      const data = await getUserData()
+      setUserData(data)
+      console.log("User data:", data)
+    } catch (error) {
+      console.error("Error fetching user data:", error)
+      Alert.alert("Error", "Failed to load user data. Please try again.")
+    }
+  }
 
   const handleLogout = async () => {
     try {
@@ -33,6 +49,37 @@ const ProfileScreen = () => {
     }
   }
 
+  // Function to format the birthday
+  const formatBirthday = (dateString) => {
+    if (!dateString) return "Not provided"
+    const date = new Date(dateString)
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  // Function to capitalize the first letter of each word
+  const capitalizeWords = (str) => {
+    if (!str) return "Not provided"
+    return str
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ")
+  }
+
+  if (!userData) {
+    return (
+      <SafeAreaView style={styles.container} edges={["left", "right"]}>
+        <Header title="Profile" />
+        <View style={styles.loadingContainer}>
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <Header title="Profile" />
@@ -41,18 +88,16 @@ const ProfileScreen = () => {
           <View style={styles.avatarContainer}>
             <Ionicons name="person" size={scale(60)} color={colors.primary} />
           </View>
-          <Text style={styles.name}>John Doe</Text>
-          <Text style={styles.jobTitle}>HR Manager</Text>
+          <Text style={styles.name}>{capitalizeWords(userData.name)}</Text>
+          <Text style={styles.jobTitle}>{capitalizeWords(userData.job_title)}</Text>
         </View>
         <View style={styles.card}>
-          <ProfileItem icon="mail-outline" title="Email" value="john.doe@example.com" />
-          <ProfileItem icon="call-outline" title="Phone" value="+1 (555) 123-4567" />
-          <ProfileItem icon="business-outline" title="Department" value="Human Resources" />
-          <ProfileItem icon="calendar-outline" title="Joined" value="January 1, 2023" />
+          <ProfileItem icon="mail-outline" title="Work Email" value={userData.email} />
+          <ProfileItem icon="call-outline" title="Work Phone" value={userData.phoneNumber} />
+          <ProfileItem icon="heart-outline" title="Marital Status" value={capitalizeWords(userData.marital)} />
+          <ProfileItem icon="calendar-outline" title="Birthday" value={formatBirthday(userData.birthday)} />
+          <ProfileItem icon="person-outline" title="Gender" value={capitalizeWords(userData.gender)} />
         </View>
-        <TouchableOpacity style={styles.editProfileButton} onPress={() => {}}>
-          <Text style={styles.editProfileText}>Edit Profile</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={scale(24)} color={colors.text.light} />
           <Text style={styles.logoutText}>Logout</Text>
@@ -69,6 +114,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   profileHeader: {
     alignItems: "center",
@@ -133,24 +183,11 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     color: colors.text.primary,
   },
-  editProfileButton: {
-    backgroundColor: colors.secondary,
-    borderRadius: scale(12),
-    padding: scale(16),
-    marginHorizontal: scale(24),
-    marginBottom: verticalScale(16),
-    alignItems: "center",
-  },
-  editProfileText: {
-    ...colors.typography.button,
-    fontSize: moderateScale(16),
-    color: colors.text.light,
-  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.button.secondary,
+    backgroundColor: colors.primary,
     borderRadius: scale(12),
     padding: scale(16),
     marginHorizontal: scale(24),
@@ -165,4 +202,3 @@ const styles = StyleSheet.create({
 })
 
 export default ProfileScreen
-

@@ -3,12 +3,9 @@ const { verifyToken } = require("../utils/jwtUtils");
 const logger = require("../utils/logger");
 
 const userController = {
-  async getUserData(req, res) {
-    const { token } = req.body;
-
+  async getProfile(req, res) {
     try {
-      const decoded = verifyToken(token);
-      const { email } = decoded;
+      const { email } = req.user;
 
       const user = await User.findByEmail(email);
       if (!user) {
@@ -16,13 +13,25 @@ const userController = {
         return res.status(404).json({ error: "User not found" });
       }
 
-      logger.info(`User data fetched for email: ${email}`);
-      res.json({ data: user });
+      // Sanitize user data before sending
+      const userProfile = {
+        id: user.id,
+        name: user.name,
+        email: user.work_email,
+        job_title: user.job_title,
+        phoneNumber: user.work_phone,
+        marital: user.marital,
+        gender: user.gender,
+        birthday: user.birthday
+      };
+
+      logger.info(`Profile data fetched for user: ${email}`);
+      res.json(userProfile);
     } catch (error) {
-      logger.error(`Error fetching user data: ${error}`);
+      logger.error(`Error fetching user profile: ${error}`);
       res.status(500).json({ error: "Internal server error" });
     }
-  },
+  }
 };
 
 module.exports = userController;

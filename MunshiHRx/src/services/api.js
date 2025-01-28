@@ -78,17 +78,17 @@ export const verifyOTP = async (email, otp) => {
   }
 }
 
-export const getUserData = async (token) => {
+export const getUserData = async () => {
   try {
-    const response = await api.post(
-      "/user/userdata",
-      { token },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    const token = await AsyncStorage.getItem("userToken")
+    if (!token) {
+      throw new Error("No user token found")
+    }
+    const response = await api.get("/user/profile", {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-    )
+    })
     return response.data
   } catch (error) {
     handleApiError(error)
@@ -104,4 +104,3 @@ export const logout = async () => {
     handleApiError(error)
   }
 }
-

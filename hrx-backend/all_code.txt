@@ -142,6 +142,17 @@ const authController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  async logout(req, res) {
+    try {
+      // In a real-world scenario, you might invalidate the token here (e.g., using a blacklist or Redis).
+      // For now, we'll just return a success message.
+      logger.info(`User logged out`);
+      res.json({ message: "Logged out successfully" });
+    } catch (error) {
+      logger.error(`Error during logout: ${error}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
 };
 
 module.exports = authController;
@@ -150,11 +161,18 @@ module.exports = authController;
 // --- D:\App\MunshiHR Application\hrx-backend\src\controllers\otpController.js ---
 const User = require("../models/User");
 const { sendEmail } = require("../services/mailService");
+const crypto = require("crypto");
 const logger = require("../utils/logger");
 
 const otpController = {
   async sendOTP(req, res) {
     const { email } = req.body;
+
+    if (!email) {
+      logger.warn("Email is required");
+      return res.status(400).json({ error: "Email is required" });
+    }
+
     logger.info(`Sending OTP to email: ${email}`);
 
     try {
@@ -164,13 +182,13 @@ const otpController = {
         return res.status(404).json({ error: "User not found" });
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();      
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      const otp = crypto.randomInt(100000, 999999).toString();
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // OTP expires in 15 minutes
 
       await User.createOTP(email, otp, expiresAt);
       await sendEmail(email, "Your OTP for Password Reset", `Your OTP is: ${otp}`);
 
-      logger.info(`OTP sent to ${email}`);
+      logger.info(`OTP sent to ${email} ${otp}`);
       res.json({ message: "OTP sent" });
     } catch (error) {
       logger.error(`Error sending OTP: ${error}`);
@@ -180,6 +198,12 @@ const otpController = {
 
   async verifyOTP(req, res) {
     const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      logger.warn("Email and OTP are required");
+      return res.status(400).json({ error: "Email and OTP are required" });
+    }
+
     logger.info(`Verifying OTP for email: ${email}`);
 
     try {
@@ -274,10 +298,25 @@ const User = {
   },
 
   async createOTP(email, otp, expiresAt) {
-    await pool.query(
-      "INSERT INTO hr_user_mobile_otps (username, otp, expires_at) VALUES ($1, $2, $3) ON CONFLICT (username) DO UPDATE SET otp = $2, expires_at = $3",
-      [email, otp, expiresAt]
+    // Check if an OTP record already exists for the user
+    const existingOTP = await pool.query(
+      "SELECT * FROM hr_user_mobile_otps WHERE username = $1",
+      [email]
     );
+
+    if (existingOTP.rows.length > 0) {
+      // Update the existing OTP record
+      await pool.query(
+        "UPDATE hr_user_mobile_otps SET otp = $1, expires_at = $2 WHERE username = $3",
+        [otp, expiresAt, email]
+      );
+    } else {
+      // Insert a new OTP record
+      await pool.query(
+        "INSERT INTO hr_user_mobile_otps (username, otp, expires_at) VALUES ($1, $2, $3)",
+        [email, otp, expiresAt]
+      );
+    }
   },
 
   async verifyOTP(email, otp) {
@@ -301,6 +340,7 @@ const router = express.Router();
 router.post("/checkuser", authController.checkUser);
 router.post("/login", authController.login);
 router.post("/setpassword", authController.setPassword);
+router.post("/logout", authController.logout);
 
 module.exports = router;
 
@@ -404,20 +444,3 @@ const verifyPassword = (inputPassword, name, id, storedHash) => {
 
 module.exports = { hashPassword, verifyPassword };
 
-//app.js
-const express = require("express");
-const cors = require("cors");
-const authRoutes = require("./routes/authRoutes");
-const otpRoutes = require("./routes/otpRoutes");
-const userRoutes = require("./routes/userRoutes");
-
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-app.use("/api/auth", authRoutes);
-app.use("/api/otp", otpRoutes);
-app.use("/api/user", userRoutes);
-
-module.exports = app;

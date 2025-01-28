@@ -4,6 +4,7 @@ const userController = require("../controllers/userController");
 
 const router = express.Router();
 
-router.post("/userdata", authMiddleware, userController.getUserData);
+// Changed from /userdata to /profile to match frontend
+router.get("/profile", authMiddleware, userController.getProfile);
 
 module.exports = router;
