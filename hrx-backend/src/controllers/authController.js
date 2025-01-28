@@ -100,6 +100,30 @@ const authController = {
       res.status(500).json({ error: "Internal server error" });
     }
   },
+  async validateToken(req, res) {
+    const { token } = req.body;
+
+    if (!token) {
+      logger.warn("No token provided for validation");
+      return res.json({ valid: false });
+    }
+
+    try {
+      const decoded = verifyToken(token);
+      const user = await User.findByEmail(decoded.email);
+      
+      if (!user) {
+        logger.warn(`User not found for token validation: ${decoded.email}`);
+        return res.json({ valid: false });
+      }
+
+      logger.info(`Token validated successfully for user: ${decoded.email}`);
+      return res.json({ valid: true });
+    } catch (error) {
+      logger.warn(`Token validation failed: ${error.message}`);
+      return res.json({ valid: false });
+    }
+  },
 };
 
 module.exports = authController;

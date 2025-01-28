@@ -13,9 +13,6 @@ const CustomAlert = ({ visible, title, message, onClose, onConfirm }) => {
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={[styles.button, styles.confirmButton]} onPress={onConfirm}>
               <Text style={[styles.buttonText, styles.confirmButtonText]}>OK</Text>
             </TouchableOpacity>

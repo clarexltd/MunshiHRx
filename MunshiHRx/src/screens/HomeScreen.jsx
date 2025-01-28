@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
-import { useFocusEffect } from "@react-navigation/native"
 import Header from "../components/Header"
 
 const HomeScreen = () => {

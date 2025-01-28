@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react"
+import React from "react"
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import Header from "../components/Header"
+import ProfileSkeleton from "../components/ProfileSkeleton"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
-import { logout, getUserData } from "../services/api"
+import { logout } from "../services/api"
+import { useUserData } from "../hooks/useUserData"
 
 const ProfileItem = ({ icon, title, value }) => (
   <View style={styles.profileItem}>
@@ -20,22 +22,7 @@ const ProfileItem = ({ icon, title, value }) => (
 
 const ProfileScreen = () => {
   const navigation = useNavigation()
-  const [userData, setUserData] = useState(null)
-
-  useEffect(() => {
-    fetchUserData()
-  }, [])
-
-  const fetchUserData = async () => {
-    try {
-      const data = await getUserData()
-      setUserData(data)
-      console.log("User data:", data)
-    } catch (error) {
-      console.error("Error fetching user data:", error)
-      Alert.alert("Error", "Failed to load user data. Please try again.")
-    }
-  }
+  const { data: userData, isLoading, isError, error, refetch } = useUserData()
 
   const handleLogout = async () => {
     try {
@@ -49,7 +36,6 @@ const ProfileScreen = () => {
     }
   }
 
-  // Function to format the birthday
   const formatBirthday = (dateString) => {
     if (!dateString) return "Not provided"
     const date = new Date(dateString)
@@ -60,7 +46,6 @@ const ProfileScreen = () => {
     })
   }
 
-  // Function to capitalize the first letter of each word
   const capitalizeWords = (str) => {
     if (!str) return "Not provided"
     return str
@@ -69,12 +54,39 @@ const ProfileScreen = () => {
       .join(" ")
   }
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={["left", "right"]}>
+        <Header title="Profile" />
+        <ProfileSkeleton />
+      </SafeAreaView>
+    )
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={styles.container} edges={["left", "right"]}>
+        <Header title="Profile" />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Failed to load user data.</Text>
+          <Text style={styles.errorDetails}>{error?.message || "Unknown error occurred"}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   if (!userData) {
     return (
       <SafeAreaView style={styles.container} edges={["left", "right"]}>
         <Header title="Profile" />
-        <View style={styles.loadingContainer}>
-          <Text>Loading...</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>No user data available.</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+            <Text style={styles.retryButtonText}>Refresh</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     )
@@ -115,10 +127,36 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  loadingContainer: {
+  errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: scale(24),
+  },
+  errorText: {
+    ...colors.typography.body,
+    fontSize: moderateScale(16),
+    color: colors.text.secondary,
+    marginBottom: verticalScale(8),
+    textAlign: "center",
+  },
+  errorDetails: {
+    ...colors.typography.caption,
+    fontSize: moderateScale(14),
+    color: colors.text.secondary,
+    marginBottom: verticalScale(16),
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(8),
+    borderRadius: scale(8),
+  },
+  retryButtonText: {
+    ...colors.typography.button,
+    fontSize: moderateScale(14),
+    color: colors.text.light,
   },
   profileHeader: {
     alignItems: "center",
@@ -202,3 +240,4 @@ const styles = StyleSheet.create({
 })
 
 export default ProfileScreen
+

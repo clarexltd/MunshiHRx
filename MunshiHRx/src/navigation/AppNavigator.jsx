@@ -81,32 +81,10 @@ const MainTabs = () => (
   </Tab.Navigator>
 )
 
-const AppNavigator = () => {
-  const [isInitializing, setIsInitializing] = useState(true)
-  const [userToken, setUserToken] = useState(null)
-
-  useEffect(() => {
-    const bootstrapAsync = async () => {
-      let token
-      try {
-        token = await AsyncStorage.getItem("userToken")
-      } catch (e) {
-        // Restoring token failed
-      }
-      setUserToken(token)
-      setIsInitializing(false)
-    }
-
-    bootstrapAsync()
-  }, [])
-
-  if (isInitializing) {
-    return <SplashScreen />
-  }
-
+const AppNavigator = ({ isAuthenticated }) => {
   return (
     <Stack.Navigator
-      initialRouteName={userToken ? "Main" : "Login"}
+      initialRouteName={isAuthenticated ? "Main" : "Login"}
       screenOptions={{
         headerShown: false,
         cardStyle: { backgroundColor: colors.background },

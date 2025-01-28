@@ -1,9 +1,8 @@
-import React, { useState, useRef } from "react"
+import React, { useState } from "react"
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   ScrollView,
   Alert,
   TouchableWithoutFeedback,
@@ -15,16 +14,16 @@ import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
+import InputField from "../components/InputField"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
-import { checkUser } from "../services/api"
+import { checkUser, requestOTP } from "../services/api"
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const inputRef = useRef(null)
 
   useCustomBackHandler("exit")
 
@@ -38,6 +37,8 @@ const LoginScreen = ({ navigation }) => {
       if (passwordExists) {
         navigation.navigate("Password", { email, passwordExists })
       } else {
+        console.log("Requesting OTP for new user...")
+        await requestOTP(email)
         navigation.navigate("OTP", { email, isNewUser: true })
       }
     } catch (error) {
@@ -74,22 +75,18 @@ const LoginScreen = ({ navigation }) => {
 
             <View style={styles.card}>
               <Text style={styles.label}>Email</Text>
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={scale(18)} color={colors.text.secondary} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  placeholderTextColor={colors.input.placeholder}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  returnKeyType="done"
-                  onSubmitEditing={dismissKeyboard}
-                />
-              </View>
+              <InputField
+                icon="mail-outline"
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                returnKeyType="done"
+                onSubmitEditing={dismissKeyboard}
+              />
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
               <PrimaryButton
                 title="Continue"
@@ -168,31 +165,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     color: colors.text.secondary,
     marginBottom: verticalScale(8),
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: colors.input.border,
-    marginBottom: verticalScale(16),
-    minHeight: verticalScale(48),
-    paddingVertical: verticalScale(2),
-  },
-  inputIcon: {
-    marginLeft: scale(12),
-    marginRight: scale(8),
-    alignSelf: "center",
-  },
-  input: {
-    flex: 1,
-    ...colors.typography.body,
-    fontSize: moderateScale(13),
-    color: colors.text.primary,
-    paddingVertical: verticalScale(8),
-    minHeight: verticalScale(48),
-    textAlignVertical: "center",
   },
   errorText: {
     ...colors.typography.caption,

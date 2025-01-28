@@ -1,8 +1,9 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput } from "react-native"
+import { View, Text, StyleSheet } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
+import InputField from "../components/InputField"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
@@ -21,11 +22,12 @@ const OTPScreen = ({ navigation, route }) => {
     setLoading(true)
     setError("")
     try {
+      console.log("Verifying OTP...")
       await verifyOTP(email, otp)
       navigation.navigate("SetPassword", { email, isReset, isNewUser })
     } catch (error) {
       console.error("Verify OTP error:", error.message)
-      setError(error.message)
+      setError(error.message || "Failed to verify OTP. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -48,17 +50,14 @@ const OTPScreen = ({ navigation, route }) => {
                 : "Enter the verification code we sent to your email."}
           </Text>
           <Text style={styles.email}>{email}</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={otp}
-              onChangeText={setOtp}
-              placeholder="Enter 6-digit code"
-              placeholderTextColor={colors.input.placeholder}
-              keyboardType="number-pad"
-              maxLength={6}
-            />
-          </View>
+          <InputField
+            icon="key-outline"
+            value={otp}
+            onChangeText={setOtp}
+            placeholder="Enter 6-digit code"
+            keyboardType="number-pad"
+            maxLength={6}
+          />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
           <PrimaryButton
             title="Verify"
@@ -118,26 +117,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: verticalScale(24),
     textAlign: "center",
-  },
-  inputContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: colors.input.border,
-    marginBottom: verticalScale(16),
-    minHeight: verticalScale(48),
-    paddingHorizontal: scale(16),
-  },
-  input: {
-    flex: 1,
-    ...colors.typography.body,
-    fontSize: moderateScale(18),
-    color: colors.text.primary,
-    textAlign: "center",
-    letterSpacing: scale(8),
   },
   errorText: {
     ...colors.typography.caption,

@@ -1,9 +1,9 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, ScrollView } from "react-native"
+import { View, Text, StyleSheet, ScrollView } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
-import { Ionicons } from "@expo/vector-icons"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
+import InputField from "../components/InputField"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
@@ -65,44 +65,26 @@ const SetPasswordScreen = ({ navigation, route }) => {
       <ScrollView style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.label}>New Password</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={scale(18)}
-              color={colors.text.secondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPasswordState}
-              placeholder="Enter new password"
-              placeholderTextColor={colors.input.placeholder}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <InputField
+            icon="lock-closed-outline"
+            value={password}
+            onChangeText={setPasswordState}
+            placeholder="Enter new password"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
           <Text style={styles.label}>Confirm Password</Text>
-          <View style={styles.inputContainer}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={scale(18)}
-              color={colors.text.secondary}
-              style={styles.inputIcon}
-            />
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Confirm new password"
-              placeholderTextColor={colors.input.placeholder}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
+          <InputField
+            icon="lock-closed-outline"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            placeholder="Confirm new password"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -153,31 +135,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(13),
     color: colors.text.secondary,
     marginBottom: verticalScale(8),
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: scale(12),
-    borderWidth: 1,
-    borderColor: colors.input.border,
-    marginBottom: verticalScale(16),
-    minHeight: verticalScale(48),
-    paddingVertical: verticalScale(2),
-  },
-  inputIcon: {
-    marginLeft: scale(12),
-    marginRight: scale(8),
-    alignSelf: "center",
-  },
-  input: {
-    flex: 1,
-    ...colors.typography.body,
-    fontSize: moderateScale(13),
-    color: colors.text.primary,
-    paddingVertical: verticalScale(8),
-    minHeight: verticalScale(48),
-    textAlignVertical: "center",
   },
   errorText: {
     ...colors.typography.caption,
