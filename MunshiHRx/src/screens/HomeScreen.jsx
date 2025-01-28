@@ -1,43 +1,27 @@
 import React from "react"
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, Alert } from "react-native"
-import Header from "../components/Header"
+import { View, Text, StyleSheet, ScrollView } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
-import { PrimaryButton } from "../components/buttons/PrimaryButton"
-import { logout } from "../services/api"
+import { useFocusEffect } from "@react-navigation/native"
+import Header from "../components/Header"
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = () => {
   useCustomBackHandler("custom", () => {
-    Alert.alert(
-      "Exit App",
-      "Are you sure you want to exit?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "OK", onPress: () => BackHandler.exitApp() },
-      ],
-      { cancelable: false },
-    )
+    // Handle custom back action if needed
     return true
   })
 
-  const handleLogout = async () => {
-    try {
-      await logout()
-      navigation.replace("Login")
-    } catch (error) {
-      Alert.alert("Error", "Failed to logout. Please try again.")
-    }
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <Header title="MunshiHRx" rightIcon="bell-outline" />
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <Header title="Home" />
       <ScrollView style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.welcomeText}>Welcome to MunshiHRx!</Text>
-          <PrimaryButton title="Logout" onPress={handleLogout} style={styles.logoutButton} />
+          <Text style={styles.subText}>Your HR management solution</Text>
         </View>
+        {/* Add more content for the home screen here */}
       </ScrollView>
     </SafeAreaView>
   )
@@ -51,6 +35,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: scale(24),
+    paddingTop: scale(16),
   },
   card: {
     backgroundColor: colors.card.background,
@@ -63,14 +48,17 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   welcomeText: {
-    ...colors.typography.subheader,
-    fontSize: moderateScale(18),
+    ...colors.typography.header,
+    fontSize: moderateScale(24),
     color: colors.text.primary,
     textAlign: "center",
-    marginBottom: verticalScale(24),
+    marginBottom: verticalScale(8),
   },
-  logoutButton: {
-    backgroundColor: colors.button.secondary,
+  subText: {
+    ...colors.typography.body,
+    fontSize: moderateScale(16),
+    color: colors.text.secondary,
+    textAlign: "center",
   },
 })
 

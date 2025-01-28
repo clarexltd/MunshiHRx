@@ -1,57 +1,28 @@
 import React, { useEffect, useRef } from "react"
-import { View, Text, StyleSheet, Animated, SafeAreaView } from "react-native"
+import { View, Text, StyleSheet, Animated } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { colors } from "../styles/colors"
-import HexagonLogo from "../components/icons/HexagonLogo"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 
-const SplashScreen = ({ onFinish }) => {
-  const logoScale = useRef(new Animated.Value(0)).current
-  const logoRotate = useRef(new Animated.Value(0)).current
-  const textOpacity = useRef(new Animated.Value(0)).current
-  const subtitleOpacity = useRef(new Animated.Value(0)).current
+const SplashScreen = () => {
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.5)).current
 
   useEffect(() => {
-    const animations = [
-      Animated.spring(logoScale, {
-        toValue: 1,
-        tension: 10,
-        friction: 2,
-        useNativeDriver: true,
-        delay: 300,
-      }),
-      Animated.timing(logoRotate, {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: true,
-        delay: 300,
       }),
-      Animated.timing(textOpacity, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        duration: 800,
+        friction: 4,
+        tension: 40,
         useNativeDriver: true,
-        delay: 800,
       }),
-      Animated.timing(subtitleOpacity, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-        delay: 1200,
-      }),
-    ]
-
-    Animated.parallel(animations).start()
-
-    const timer = setTimeout(() => {
-      onFinish()
-    }, 3000)
-
-    return () => clearTimeout(timer)
-  }, [onFinish, logoScale, logoRotate, textOpacity, subtitleOpacity])
-
-  const spin = logoRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  })
+    ]).start()
+  }, [fadeAnim, scaleAnim]) // Added fadeAnim and scaleAnim as dependencies
 
   return (
     <SafeAreaView style={styles.container}>
@@ -60,42 +31,23 @@ const SplashScreen = ({ onFinish }) => {
           style={[
             styles.logoContainer,
             {
-              transform: [{ scale: logoScale }, { rotate: spin }],
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
             },
           ]}
         >
-          <HexagonLogo size={scale(80)} color={colors.text.light} />
+          <Text style={styles.logoText}>CLAREx</Text>
         </Animated.View>
-
-        <Animated.Text
-          style={[
-            styles.title,
-            {
-              opacity: textOpacity,
-              transform: [
-                {
-                  translateY: textOpacity.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [moderateScale(20), 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          CLAREx
-        </Animated.Text>
-
         <Animated.Text
           style={[
             styles.subtitle,
             {
-              opacity: subtitleOpacity,
+              opacity: fadeAnim,
               transform: [
                 {
-                  translateY: subtitleOpacity.interpolate({
+                  translateY: fadeAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [moderateScale(20), 0],
+                    outputRange: [50, 0],
                   }),
                 },
               ],
@@ -121,24 +73,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: scale(20),
   },
   logoContainer: {
-    width: scale(80),
-    height: scale(80),
+    width: scale(120),
+    height: scale(120),
+    borderRadius: scale(60),
+    backgroundColor: colors.secondary,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: verticalScale(24),
   },
-  title: {
+  logoText: {
     ...colors.typography.header,
-    fontSize: moderateScale(32),
+    fontSize: moderateScale(24),
     color: colors.text.light,
-    marginBottom: verticalScale(16),
-    letterSpacing: scale(1),
   },
   subtitle: {
     ...colors.typography.body,
     fontSize: moderateScale(16),
     color: colors.text.light,
-    opacity: 0.9,
     textAlign: "center",
     paddingHorizontal: scale(32),
   },

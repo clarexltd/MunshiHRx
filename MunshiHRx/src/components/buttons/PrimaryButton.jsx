@@ -1,10 +1,10 @@
 import React from "react"
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from "react-native"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { Ionicons } from "@expo/vector-icons"
 import { colors } from "../../styles/colors"
 import { scale, verticalScale, moderateScale } from "../../utils/responsive"
 
-export const PrimaryButton = ({ onPress, title, loading = false, disabled = false, style, icon = "arrow-right" }) => {
+export const PrimaryButton = ({ onPress, title, loading = false, disabled = false, style, icon = "arrow-forward" }) => {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -16,7 +16,7 @@ export const PrimaryButton = ({ onPress, title, loading = false, disabled = fals
       ) : (
         <>
           <Text style={styles.text}>{title}</Text>
-          {icon && <Icon name={icon} size={scale(20)} color={colors.text.light} style={styles.icon} />}
+          {icon && <Ionicons name={icon} size={scale(20)} color={colors.text.light} style={styles.icon} />}
         </>
       )}
     </TouchableOpacity>

@@ -1,19 +1,21 @@
 import React from "react"
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from "react-native"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Platform } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const Header = ({ title, leftIcon, rightIcon, onLeftPress, onRightPress, showBack }) => {
-  // If title is an email, truncate it appropriately
+  const insets = useSafeAreaInsets()
   const displayTitle = title.includes("@") ? (title.length > 25 ? title.substring(0, 25) + "..." : title) : title
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent />
       <View style={styles.headerContent}>
         <TouchableOpacity style={styles.iconButton} onPress={onLeftPress} disabled={!leftIcon && !showBack}>
-          {showBack && <Icon name="arrow-left" size={scale(22)} color={colors.text.light} />}
-          {leftIcon && <Icon name={leftIcon} size={scale(22)} color={colors.text.light} />}
+          {showBack && <Ionicons name="arrow-back" size={scale(22)} color={colors.text.light} />}
+          {leftIcon && <Ionicons name={leftIcon} size={scale(22)} color={colors.text.light} />}
         </TouchableOpacity>
 
         <Text numberOfLines={1} style={styles.title}>
@@ -21,7 +23,7 @@ const Header = ({ title, leftIcon, rightIcon, onLeftPress, onRightPress, showBac
         </Text>
 
         <TouchableOpacity style={styles.iconButton} onPress={onRightPress} disabled={!rightIcon}>
-          {rightIcon && <Icon name={rightIcon} size={scale(22)} color={colors.text.light} />}
+          {rightIcon && <Ionicons name={rightIcon} size={scale(22)} color={colors.text.light} />}
         </TouchableOpacity>
       </View>
     </View>
@@ -31,7 +33,6 @@ const Header = ({ title, leftIcon, rightIcon, onLeftPress, onRightPress, showBac
 const styles = StyleSheet.create({
   header: {
     backgroundColor: colors.primary,
-    paddingTop: verticalScale(8),
     paddingBottom: verticalScale(16),
     borderBottomLeftRadius: scale(20),
     borderBottomRightRadius: scale(20),

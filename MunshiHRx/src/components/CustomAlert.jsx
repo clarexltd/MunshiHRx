@@ -1,6 +1,6 @@
 import React from "react"
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { Ionicons } from "@expo/vector-icons"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 
@@ -9,7 +9,7 @@ const CustomAlert = ({ visible, title, message, onClose, onConfirm }) => {
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.alertContainer}>
-          <Icon name="alert-circle-outline" size={scale(48)} color={colors.primary} style={styles.icon} />
+          <Ionicons name="alert-circle-outline" size={scale(48)} color={colors.primary} style={styles.icon} />
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.buttonContainer}>

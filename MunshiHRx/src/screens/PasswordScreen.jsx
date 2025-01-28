@@ -1,12 +1,13 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, SafeAreaView } from "react-native"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { View, Text, StyleSheet, TextInput, ScrollView } from "react-native"
+import { Ionicons } from "@expo/vector-icons"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
 import { login, requestOTP } from "../services/api"
+import { SafeAreaView } from "react-native-safe-area-context"
 
 const PasswordScreen = ({ navigation, route }) => {
   const [password, setPassword] = useState("")
@@ -21,7 +22,7 @@ const PasswordScreen = ({ navigation, route }) => {
     setError("")
     try {
       const { token } = await login(email, password)
-      navigation.replace("Home")
+      navigation.replace("Main")
     } catch (error) {
       console.error("Sign in error:", error.message)
       setError(error.message)
@@ -45,14 +46,18 @@ const PasswordScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header title={email} leftIcon="arrow-left" onLeftPress={() => navigation.goBack()} />
-
-      <View style={styles.content}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <Header title={email} leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
+      <ScrollView style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputContainer}>
-            <Icon name="lock-outline" size={scale(18)} color={colors.text.secondary} style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={scale(18)}
+              color={colors.text.secondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               value={password}
@@ -60,6 +65,8 @@ const PasswordScreen = ({ navigation, route }) => {
               placeholder="Enter your password"
               placeholderTextColor={colors.input.placeholder}
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
@@ -77,7 +84,7 @@ const PasswordScreen = ({ navigation, route }) => {
             disabled={!password.trim()}
           />
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   )
 }

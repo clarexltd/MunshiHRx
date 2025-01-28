@@ -1,10 +1,10 @@
-import { Platform } from 'react-native';
+import { Platform } from "react-native"
 
 export const fonts = {
-  regular: 'Poppins-Regular',
-  medium: 'Poppins-Medium',
-  semiBold: 'Poppins-SemiBold',
-};
+  regular: "Poppins-Regular",
+  medium: "Poppins-Medium",
+  semiBold: "Poppins-SemiBold",
+}
 
 export const typography = {
   header: {
@@ -27,5 +27,5 @@ export const typography = {
     fontFamily: fonts.medium,
     fontSize: 16,
   },
-};
+}
 

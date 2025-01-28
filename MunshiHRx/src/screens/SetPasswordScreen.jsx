@@ -1,6 +1,7 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, SafeAreaView, Alert } from "react-native"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { View, Text, StyleSheet, TextInput, ScrollView } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
+import { Ionicons } from "@expo/vector-icons"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
@@ -55,18 +56,22 @@ const SetPasswordScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
       <Header
         title={isReset ? "Reset Password" : "Set Password"}
-        leftIcon="arrow-left"
+        leftIcon="arrow-back"
         onLeftPress={() => navigation.goBack()}
       />
-
-      <View style={styles.content}>
+      <ScrollView style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.label}>New Password</Text>
           <View style={styles.inputContainer}>
-            <Icon name="lock-outline" size={scale(18)} color={colors.text.secondary} style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={scale(18)}
+              color={colors.text.secondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               value={password}
@@ -74,12 +79,19 @@ const SetPasswordScreen = ({ navigation, route }) => {
               placeholder="Enter new password"
               placeholderTextColor={colors.input.placeholder}
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputContainer}>
-            <Icon name="lock-outline" size={scale(18)} color={colors.text.secondary} style={styles.inputIcon} />
+            <Ionicons
+              name="lock-closed-outline"
+              size={scale(18)}
+              color={colors.text.secondary}
+              style={styles.inputIcon}
+            />
             <TextInput
               style={styles.input}
               value={confirmPassword}
@@ -87,6 +99,8 @@ const SetPasswordScreen = ({ navigation, route }) => {
               placeholder="Confirm new password"
               placeholderTextColor={colors.input.placeholder}
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
 
@@ -100,7 +114,7 @@ const SetPasswordScreen = ({ navigation, route }) => {
             disabled={!password.trim() || !confirmPassword.trim()}
           />
         </View>
-      </View>
+      </ScrollView>
       <CustomAlert
         visible={showAlert}
         title="Success"

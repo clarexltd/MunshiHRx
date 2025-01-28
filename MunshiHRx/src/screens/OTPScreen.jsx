@@ -1,11 +1,12 @@
 import React, { useState } from "react"
-import { View, Text, StyleSheet, TextInput, SafeAreaView } from "react-native"
+import { View, Text, StyleSheet, TextInput } from "react-native"
+import { SafeAreaView } from "react-native-safe-area-context"
 import { PrimaryButton } from "../components/buttons/PrimaryButton"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
 import { useCustomBackHandler } from "../hooks/useCustomBackHandler"
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { Ionicons } from "@expo/vector-icons"
 import { verifyOTP } from "../services/api"
 
 const OTPScreen = ({ navigation, route }) => {
@@ -31,12 +32,11 @@ const OTPScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header title="Verify OTP" leftIcon="arrow-left" onLeftPress={() => navigation.goBack()} />
-
+    <SafeAreaView style={styles.container} edges={["left", "right"]}>
+      <Header title="Verify OTP" leftIcon="arrow-back" onLeftPress={() => navigation.goBack()} />
       <View style={styles.content}>
         <View style={styles.card}>
-          <Icon name="shield-check-outline" size={scale(48)} color={colors.primary} style={styles.icon} />
+          <Ionicons name="shield-checkmark-outline" size={scale(48)} color={colors.primary} style={styles.icon} />
           <Text style={styles.title}>
             {isNewUser ? "Verify Your Email" : isReset ? "Reset Password" : "Verify OTP"}
           </Text>
