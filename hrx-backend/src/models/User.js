@@ -74,6 +74,38 @@ const User = {
       [supervisorId]
     );
     return result.rows;
+  },
+  async findAttendanceHistoryByEmployeeId(employeeId) {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         employee_id, 
+         check_in, 
+         check_out, 
+         worked_hours, 
+         overtime_hours,
+         in_country_name, 
+         in_city, 
+         in_ip_address, 
+         in_browser, 
+         in_mode, 
+         out_country_name, 
+         out_city, 
+         out_ip_address, 
+         out_browser, 
+         out_mode,
+         in_latitude, 
+         in_longitude, 
+         out_latitude, 
+         out_longitude, 
+         create_date, 
+         write_date
+       FROM hr_attendance
+       WHERE employee_id = $1
+       ORDER BY check_in DESC`,
+      [employeeId]
+    );
+    return result.rows;
   }
 };
 
