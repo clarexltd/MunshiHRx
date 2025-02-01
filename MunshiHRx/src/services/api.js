@@ -140,3 +140,17 @@ export const getEmployeesUnderSupervisor = async (employeeId) => {
   }
 }
 
+// Assuming getAttendanceHistory is an API call function.
+export const getAttendanceHistory = async (employeeId) => {
+  try {
+    const response = await api.get(`/attendance/history/employee/${employeeId}`)
+    // Check if the response contains a message indicating no records
+    if (response.data.message === "No attendance history found") {
+      return { message: "No attendance history found" };
+    }
+    return response.data; // Return the attendance records
+  } catch (error) {
+    throw new Error(error.response ? error.response.data.error : "An error occurred");
+  }
+}
+

@@ -17,7 +17,8 @@ const attendanceController = {
 
       if (attendanceHistory.length === 0) {
         logger.info(`No attendance history found for employee ID: ${employee_id}`);
-        return res.status(404).json({ message: "No attendance history found" });
+        // Return 200 OK with a message instead of 404
+        return res.status(200).json({ message: "No attendance history found" });
       }
 
       logger.info(`Found ${attendanceHistory.length} attendance records for employee ID: ${employee_id}`);

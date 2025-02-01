@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
-import { getEmployeesUnderSupervisor, getUserData } from "../services/api"
+import { getEmployeesUnderSupervisor, getUserData, getAttendanceHistory } from "../services/api"
 
 const AttendanceButton = ({ title, icon, onPress, isActive, style }) => (
   <TouchableOpacity
@@ -40,12 +40,20 @@ const EmployeeItem = ({ name, isCheckedIn, onPress, onCheckInOut }) => (
   </View>
 )
 
-const AttendanceHistoryItem = ({ date, checkIn, checkOut }) => (
+const AttendanceHistoryItem = ({ date, checkIn, checkOut, workedHours, overtimeHours }) => (
   <View style={styles.historyItem}>
-    <Text style={styles.historyDate}>{date}</Text>
+    <Text style={styles.historyDate}>{new Date(date).toLocaleDateString()}</Text>
     <View style={styles.historyTimes}>
-      <Text style={styles.historyTime}>In: {checkIn}</Text>
-      <Text style={styles.historyTime}>Out: {checkOut}</Text>
+      <Text style={styles.historyTime}>In: {checkIn ? new Date(checkIn).toLocaleTimeString() : 'N/A'}</Text>
+      <Text style={styles.historyTime}>Out: {checkOut ? new Date(checkOut).toLocaleTimeString() : 'N/A'}</Text>
+    </View>
+    <View style={styles.historyHours}>
+      <Text style={styles.historyTime}>
+        Worked: {(workedHours || 0).toFixed(2)} hrs
+      </Text>
+      <Text style={styles.historyTime}>
+        Overtime: {(overtimeHours || 0).toFixed(2)} hrs
+      </Text>
     </View>
   </View>
 )
@@ -58,6 +66,7 @@ const AttendanceScreen = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [userData, setUserData] = useState(null)
+  const [attendanceHistory, setAttendanceHistory] = useState([])
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -90,16 +99,31 @@ const AttendanceScreen = () => {
     }
   }
 
-  const attendanceHistory = [
-    { id: "1", date: "2023-05-01", checkIn: "09:00 AM", checkOut: "05:00 PM" },
-    { id: "2", date: "2023-05-02", checkIn: "08:55 AM", checkOut: "05:05 PM" },
-    { id: "3", date: "2023-05-03", checkIn: "09:05 AM", checkOut: "04:55 PM" },
-    { id: "4", date: "2023-05-04", checkIn: "08:50 AM", checkOut: "05:10 PM" },
-    { id: "5", date: "2023-05-05", checkIn: "09:10 AM", checkOut: "05:15 PM" },
-  ]
+  const fetchAttendanceHistory = async (employeeId) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getAttendanceHistory(employeeId);
+      console.log(data.message);
+      // If there is a message indicating no attendance history, set attendanceHistory as empty
+      if (data.message === "undefined") {
+        setAttendanceHistory([]); // No attendance records
+      } else {
+        setAttendanceHistory(data); // Valid attendance records
+      }
+    } catch (err) {
+      setError(err.message || "No attendance history found");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  
+  
 
   const handleEmployeePress = (employee) => {
     setSelectedEmployee(employee)
+    fetchAttendanceHistory(employee.id)
     setViewMode("history")
   }
 
@@ -126,7 +150,13 @@ const AttendanceScreen = () => {
           isActive={isCheckedIn}
         />
       </View>
-      <TouchableOpacity style={styles.historyButton} onPress={() => setViewMode("history")}>
+      <TouchableOpacity
+        style={styles.historyButton}
+        onPress={() => {
+          fetchAttendanceHistory(userData.id)
+          setViewMode("history")
+        }}
+      >
         <Text style={styles.historyButtonText}>View Attendance History</Text>
       </TouchableOpacity>
     </View>
@@ -158,32 +188,46 @@ const AttendanceScreen = () => {
       )}
     </View>
   )
-
   const renderAttendanceHistory = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
         {selectedEmployee ? `${selectedEmployee.name}'s Attendance History` : "Your Attendance History"}
       </Text>
-      <FlatList
-        data={attendanceHistory}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <AttendanceHistoryItem date={item.date} checkIn={item.checkIn} checkOut={item.checkOut} />
-        )}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      {isLoading ? (
+        <ActivityIndicator size="large" color={colors.primary} />
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text> // Show the error message when no records are found
+      ) : attendanceHistory.length > 0 ? (
+        <FlatList
+          data={attendanceHistory}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <AttendanceHistoryItem
+              date={item.check_in}
+              checkIn={item.check_in}
+              checkOut={item.check_out}
+              workedHours={item.worked_hours}
+              overtimeHours={item.overtime_hours}
+            />
+          )}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      ) : (
+        <Text style={styles.noAttendanceText}>No attendance history found</Text> // No records message
+      )}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
-          setViewMode(selectedEmployee ? "employees" : "personal")
-          setSelectedEmployee(null)
+          setViewMode(selectedEmployee ? "employees" : "personal");
+          setSelectedEmployee(null);
         }}
       >
         <Ionicons name="arrow-back" size={scale(24)} color={colors.primary} />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
     </View>
-  )
+  );
+  
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
@@ -343,6 +387,11 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(14),
     color: colors.text.secondary,
   },
+  historyHours: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: verticalScale(4),
+  },
   separator: {
     height: 1,
     backgroundColor: colors.card.border,
@@ -375,6 +424,13 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(16),
   },
   noEmployeesText: {
+    ...colors.typography.body,
+    fontSize: moderateScale(16),
+    color: colors.text.secondary,
+    textAlign: "center",
+    marginTop: verticalScale(16),
+  },
+  noAttendanceText: {
     ...colors.typography.body,
     fontSize: moderateScale(16),
     color: colors.text.secondary,
