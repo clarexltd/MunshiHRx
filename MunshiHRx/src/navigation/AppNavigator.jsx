@@ -1,16 +1,15 @@
-import React, { useState, useEffect } from "react"
+import React from "react"
 import { createStackNavigator } from "@react-navigation/stack"
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs"
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Ionicons } from "@expo/vector-icons"
-import SplashScreen from "../screens/SplashScreen"
 import LoginScreen from "../screens/LoginScreen"
 import PasswordScreen from "../screens/PasswordScreen"
 import SetPasswordScreen from "../screens/SetPasswordScreen"
 import OTPScreen from "../screens/OTPScreen"
 import HomeScreen from "../screens/HomeScreen"
 import ProfileScreen from "../screens/ProfileScreen"
+import AttendanceScreen from "../screens/AttendanceScreen"
 import { colors } from "../styles/colors"
 import { scale, moderateScale } from "../utils/responsive"
 
@@ -68,6 +67,8 @@ const MainTabs = () => (
 
         if (route.name === "Home") {
           iconName = focused ? "home" : "home-outline"
+        } else if (route.name === "Attendance") {
+          iconName = focused ? "calendar" : "calendar-outline"
         } else if (route.name === "Profile") {
           iconName = focused ? "person" : "person-outline"
         }
@@ -77,6 +78,7 @@ const MainTabs = () => (
     })}
   >
     <Tab.Screen name="Home" component={HomeScreen} options={{ title: "Home" }} />
+    <Tab.Screen name="Attendance" component={AttendanceScreen} options={{ title: "Attendance" }} />
     <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: "Profile" }} />
   </Tab.Navigator>
 )

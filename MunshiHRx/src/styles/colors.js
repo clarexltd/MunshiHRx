@@ -5,6 +5,8 @@ export const colors = {
   secondary: "#00D4AA", // Vibrant teal for accents and highlights
   accent: "#3475AC", // Muted blue for additional text or accents
   background: "#F5F7FA", // Light grayish-white for background
+  success: "#4CAF50", // Green for success states
+  error: "#F44336", // Red for error states
   card: {
     background: "#FFFFFF", // Pure white for cards
     border: "#E0E6ED", // Subtle light gray for card borders

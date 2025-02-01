@@ -1,3 +1,4 @@
+// --- D:\App\MunshiHR Application\hrx-backend\src\models\User.js ---
 const pool = require("../config/db");
 
 const User = {
@@ -53,6 +54,27 @@ const User = {
     );
     return result.rows[0];
   },
+
+  // New method: Find employees by supervisor ID
+  async findBySupervisor(supervisorId) {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         name, 
+         work_email,
+         job_title,
+         work_phone,
+         mobile_phone,
+         department_id,
+         supervisor_id,
+         create_date,
+         write_date
+       FROM hr_employee
+       WHERE supervisor_id = $1`,
+      [supervisorId]
+    );
+    return result.rows;
+  }
 };
 
 module.exports = User;

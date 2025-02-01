@@ -131,3 +131,12 @@ export const validateToken = async () => {
   }
 }
 
+export const getEmployeesUnderSupervisor = async (employeeId) => {
+  try {
+    const response = await api.get(`/employees/supervisor/${employeeId}`)
+    return response.data
+  } catch (error) {
+    handleApiError(error)
+  }
+}
+
