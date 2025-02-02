@@ -154,3 +154,32 @@ export const getAttendanceHistory = async (employeeId) => {
   }
 }
 
+// Check-in API call
+export const checkIn = async (employeeId, checkInTime, inLatitude, inLongitude) => {
+  try {
+    const response = await api.post("/attendance/checkin", {
+      employee_id: employeeId,
+      checkInTime,
+      inLatitude,
+      inLongitude,
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+};
+
+// Check-out API call
+export const checkOut = async (employeeId, checkOutTime, outLatitude, outLongitude) => {
+  try {
+    const response = await api.post("/attendance/checkout", {
+      employee_id: employeeId,
+      checkOutTime,
+      outLatitude,
+      outLongitude,
+    });
+    return response.data;
+  } catch (error) {
+    handleApiError(error);
+  }
+};

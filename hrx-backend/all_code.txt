@@ -6,8 +6,9 @@ const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const userRoutes = require("./routes/userRoutes");
-const profileImageRoutes = require("./routes/profileImageRoutes");
-const testRoutes = require("./routes/testRoutes"); // Include the test route
+const employeeRoutes = require("./routes/employeeRoutes"); // Import the new employee routes
+const attendanceRoutes = require("./routes/attendanceRoutes"); // Import the attendance routes
+
 const logger = require("./utils/logger");
 
 const app = express();
@@ -19,8 +20,8 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/user", userRoutes);
-app.use("/api/profile-image", profileImageRoutes);
-app.use("/api/test", testRoutes); // Add the test route
+app.use("/api/employees", employeeRoutes); // Register the new route
+app.use("/api/attendance", attendanceRoutes); // Register the attendance route
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -29,6 +30,7 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+
 
 
 // --- D:\App\MunshiHR Application\hrx-backend\src\config\db.js ---
@@ -61,6 +63,43 @@ const transporter = nodemailer.createTransport({
 });
 
 module.exports = transporter;
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\attendanceController.js ---
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers/attendanceController.js ---
+
+const User = require("../models/User");
+const logger = require("../utils/logger");
+
+const attendanceController = {
+  async getAttendanceHistory(req, res) {
+    const { employee_id } = req.params; // Only accept employee_id
+
+    if (!employee_id) {
+      logger.warn("Employee ID is required");
+      return res.status(400).json({ error: "Employee ID is required" });
+    }
+
+    try {
+      const attendanceHistory = await User.findAttendanceHistoryByEmployeeId(employee_id);
+
+      if (attendanceHistory.length === 0) {
+        logger.info(`No attendance history found for employee ID: ${employee_id}`);
+        // Return 200 OK with a message instead of 404
+        return res.status(200).json({ message: "No attendance history found" });
+      }
+
+      logger.info(`Found ${attendanceHistory.length} attendance records for employee ID: ${employee_id}`);
+      res.json(attendanceHistory);
+    } catch (error) {
+      logger.error(`Error fetching attendance history for employee ID ${employee_id}: ${error.message}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+};
+
+module.exports = attendanceController;
+
 
 
 // --- D:\App\MunshiHR Application\hrx-backend\src\controllers\authController.js ---
@@ -195,6 +234,61 @@ const authController = {
 module.exports = authController;
 
 
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\employeeController.js ---
+// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\employeeController.js ---
+const User = require("../models/User");
+const logger = require("../utils/logger");
+
+const employeeController = {
+  async getEmployeesBySupervisor(req, res) {
+    const { supervisor_id } = req.params; // supervisor_id is passed as a URL parameter
+
+    if (!supervisor_id) {
+      logger.warn("Supervisor ID is required");
+      return res.status(400).json({ error: "Supervisor ID is required" });
+    }
+
+    try {
+      const employees = await User.findBySupervisor(supervisor_id);
+
+      logger.info(`Found ${employees.length} employee(s) for supervisor ID: ${supervisor_id}`);
+      res.json(employees);
+    } catch (error) {
+      logger.error(`Error fetching employees for supervisor ${supervisor_id}: ${error.message}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+    async getAttendanceHistory(req, res) {
+    const { employee_id, user_id } = req.params; // Check for employee_id or user_id as parameters
+
+    if (!employee_id && !user_id) {
+      logger.warn("Employee ID or User ID is required");
+      return res.status(400).json({ error: "Employee ID or User ID is required" });
+    }
+
+    const id = employee_id || user_id; // Use the provided ID (employee_id or user_id)
+
+    try {
+      const attendanceHistory = await User.getAttendanceHistory(id);
+
+      if (attendanceHistory.length === 0) {
+        logger.info(`No attendance history found for ID: ${id}`);
+        return res.status(404).json({ message: "No attendance history found" });
+      }
+
+      logger.info(`Found ${attendanceHistory.length} attendance record(s) for ID: ${id}`);
+      res.json(attendanceHistory);
+    } catch (error) {
+      logger.error(`Error fetching attendance history for ID ${id}: ${error.message}`);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+};
+
+module.exports = employeeController;
+
+
+
 // --- D:\App\MunshiHR Application\hrx-backend\src\controllers\otpController.js ---
 const User = require("../models/User");
 const { sendEmail } = require("../services/mailService");
@@ -260,60 +354,6 @@ const otpController = {
 };
 
 module.exports = otpController;
-
-
-// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\profileImageController.js ---
-// --- D:\App\MunshiHR Application\hrx-backend\src\controllers\profileImageController.js ---
-const pool = require("../config/db");
-const logger = require("../utils/logger");
-
-const profileImageController = {
-  async getProfileImage(req, res) {
-    const { employeeId } = req.params;
-
-    if (!employeeId) {
-      logger.warn("Employee ID is required");
-      return res.status(400).json({ error: "Employee ID is required" });
-    }
-
-    logger.info(`Fetching profile image for employee ID: ${employeeId}`);
-
-    try {
-      const query = `
-        SELECT db_datas, mimetype 
-        FROM ir_attachment 
-        WHERE res_model = 'hr.employee' 
-          AND res_field = 'image_1920' 
-          AND res_id = $1
-        ORDER BY create_date DESC 
-        LIMIT 1
-      `;
-
-      const result = await pool.query(query, [employeeId]);
-
-      if (result.rows.length === 0) {
-        logger.warn(`No profile image found for employee ID: ${employeeId}`);
-        return res.status(404).json({ error: "No profile image found" });
-      }
-
-      const { db_datas, mimetype } = result.rows[0];
-
-      if (!db_datas) {
-        logger.warn(`No profile image data found for employee ID: ${employeeId}`);
-        return res.status(404).json({ error: "No profile image data found" });
-      }
-
-      res.setHeader('Content-Type', mimetype);
-      res.send(db_datas);
-      console.log("Image sent");
-    } catch (error) {
-      logger.error(`Error fetching profile image: ${error.message}`);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
-};
-
-module.exports = profileImageController;
 
 
 // --- D:\App\MunshiHR Application\hrx-backend\src\controllers\userController.js ---
@@ -388,6 +428,7 @@ module.exports = authMiddleware;
 
 
 // --- D:\App\MunshiHR Application\hrx-backend\src\models\User.js ---
+// --- D:\App\MunshiHR Application\hrx-backend\src\models\User.js ---
 const pool = require("../config/db");
 
 const User = {
@@ -443,9 +484,79 @@ const User = {
     );
     return result.rows[0];
   },
+
+  // New method: Find employees by supervisor ID
+  async findBySupervisor(supervisorId) {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         name, 
+         work_email,
+         job_title,
+         work_phone,
+         mobile_phone,
+         department_id,
+         supervisor_id,
+         create_date,
+         write_date
+       FROM hr_employee
+       WHERE supervisor_id = $1`,
+      [supervisorId]
+    );
+    return result.rows;
+  },
+  async findAttendanceHistoryByEmployeeId(employeeId) {
+    const result = await pool.query(
+      `SELECT 
+         id, 
+         employee_id, 
+         check_in, 
+         check_out, 
+         worked_hours, 
+         overtime_hours,
+         in_country_name, 
+         in_city, 
+         in_ip_address, 
+         in_browser, 
+         in_mode, 
+         out_country_name, 
+         out_city, 
+         out_ip_address, 
+         out_browser, 
+         out_mode,
+         in_latitude, 
+         in_longitude, 
+         out_latitude, 
+         out_longitude, 
+         create_date, 
+         write_date
+       FROM hr_attendance
+       WHERE employee_id = $1
+       ORDER BY check_in DESC`,
+      [employeeId]
+    );
+    return result.rows;
+  }
 };
 
 module.exports = User;
+
+
+
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\attendanceRoutes.js ---
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes/attendanceRoutes.js ---
+
+const express = require("express");
+const attendanceController = require("../controllers/attendanceController");
+
+const router = express.Router();
+
+// GET route to retrieve attendance history by employee_id
+// Example: GET /api/attendance/history/employee/126
+router.get("/history/employee/:employee_id", attendanceController.getAttendanceHistory);
+
+module.exports = router;
+
 
 
 // --- D:\App\MunshiHR Application\hrx-backend\src\routes\authRoutes.js ---
@@ -463,6 +574,20 @@ router.post("/validate", authController.validateToken);
 module.exports = router;
 
 
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\employeeRoutes.js ---
+// --- D:\App\MunshiHR Application\hrx-backend\src\routes\employeeRoutes.js ---
+const express = require("express");
+const employeeController = require("../controllers/employeeController");
+
+const router = express.Router();
+
+
+router.get("/supervisor/:supervisor_id", employeeController.getEmployeesBySupervisor);
+
+module.exports = router;
+
+
+
 // --- D:\App\MunshiHR Application\hrx-backend\src\routes\otpRoutes.js ---
 const express = require("express");
 const otpController = require("../controllers/otpController");
@@ -471,31 +596,6 @@ const router = express.Router();
 
 router.post("/sendotp", otpController.sendOTP);
 router.post("/verifyotp", otpController.verifyOTP);
-
-module.exports = router;
-
-
-// --- D:\App\MunshiHR Application\hrx-backend\src\routes\profileImageRoutes.js ---
-// --- D:\App\MunshiHR Application\hrx-backend\src\routes\profileImageRoutes.js ---
-const express = require("express");
-const { getProfileImage } = require("../controllers/profileImageController");
-
-const router = express.Router();
-
-router.get("/profile-image/:employeeId", getProfileImage);
-
-module.exports = router;
-
-
-// --- D:\App\MunshiHR Application\hrx-backend\src\routes\testRoutes.js ---
-// --- D:\App\MunshiHR Application\hrx-backend\src\routes\testRoutes.js ---
-const express = require("express");
-
-const router = express.Router();
-
-router.get("/test", (req, res) => {
-  res.json({ message: "Test route is working!" });
-});
 
 module.exports = router;
 

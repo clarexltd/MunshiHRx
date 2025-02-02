@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react"
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator } from "react-native"
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Alert, Platform } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context"
 import { Ionicons } from "@expo/vector-icons"
 import Header from "../components/Header"
 import { colors } from "../styles/colors"
 import { scale, verticalScale, moderateScale } from "../utils/responsive"
-import { getEmployeesUnderSupervisor, getUserData, getAttendanceHistory } from "../services/api"
+import { getEmployeesUnderSupervisor, getUserData, getAttendanceHistory, checkIn, checkOut } from "../services/api"
+import * as Location from "expo-location"
 
 const AttendanceButton = ({ title, icon, onPress, isActive, style }) => (
   <TouchableOpacity
@@ -44,16 +45,12 @@ const AttendanceHistoryItem = ({ date, checkIn, checkOut, workedHours, overtimeH
   <View style={styles.historyItem}>
     <Text style={styles.historyDate}>{new Date(date).toLocaleDateString()}</Text>
     <View style={styles.historyTimes}>
-      <Text style={styles.historyTime}>In: {checkIn ? new Date(checkIn).toLocaleTimeString() : 'N/A'}</Text>
-      <Text style={styles.historyTime}>Out: {checkOut ? new Date(checkOut).toLocaleTimeString() : 'N/A'}</Text>
+      <Text style={styles.historyTime}>In: {checkIn ? new Date(checkIn).toLocaleTimeString() : "N/A"}</Text>
+      <Text style={styles.historyTime}>Out: {checkOut ? new Date(checkOut).toLocaleTimeString() : "N/A"}</Text>
     </View>
     <View style={styles.historyHours}>
-      <Text style={styles.historyTime}>
-        Worked: {(workedHours || 0).toFixed(2)} hrs
-      </Text>
-      <Text style={styles.historyTime}>
-        Overtime: {(overtimeHours || 0).toFixed(2)} hrs
-      </Text>
+      <Text style={styles.historyTime}>Worked: {(workedHours || 0).toFixed(2)} hrs</Text>
+      <Text style={styles.historyTime}>Overtime: {(overtimeHours || 0).toFixed(2)} hrs</Text>
     </View>
   </View>
 )
@@ -67,17 +64,38 @@ const AttendanceScreen = () => {
   const [error, setError] = useState(null)
   const [userData, setUserData] = useState(null)
   const [attendanceHistory, setAttendanceHistory] = useState([])
+  const [todayAttendance, setTodayAttendance] = useState(null)
+  const [locationPermission, setLocationPermission] = useState(null)
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserDataAndCheckPermission = async () => {
       try {
         const data = await getUserData()
         setUserData(data)
+        console.log("User data fetched:", data)
+        // Check if the user is already checked in
+        const today = new Date().toISOString().split("T")[0]
+        const todayAttendance =
+          data.attendance_records && data.attendance_records.find((record) => record.date.startsWith(today))
+        setIsCheckedIn(todayAttendance && !todayAttendance.check_out)
+        setTodayAttendance(todayAttendance || null)
+
+        // Check location permission
+        const { status } = await Location.requestForegroundPermissionsAsync()
+        setLocationPermission(status)
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission Denied",
+            "Location permission is required for attendance. Please enable it in your device settings.",
+            [{ text: "OK" }],
+          )
+        }
       } catch (error) {
         console.error("Error fetching user data:", error)
+        setError("Failed to fetch user data. Please try again.")
       }
     }
-    fetchUserData()
+    fetchUserDataAndCheckPermission()
   }, [])
 
   useEffect(() => {
@@ -100,26 +118,21 @@ const AttendanceScreen = () => {
   }
 
   const fetchAttendanceHistory = async (employeeId) => {
-    setIsLoading(true);
-    setError(null);
+    setIsLoading(true)
+    setError(null)
     try {
-      const data = await getAttendanceHistory(employeeId);
-      console.log(data.message);
-      // If there is a message indicating no attendance history, set attendanceHistory as empty
-      if (data.message === "undefined") {
-        setAttendanceHistory([]); // No attendance records
+      const data = await getAttendanceHistory(employeeId)
+      if (data.message === "No attendance history found") {
+        setAttendanceHistory([])
       } else {
-        setAttendanceHistory(data); // Valid attendance records
+        setAttendanceHistory(data)
       }
     } catch (err) {
-      setError(err.message || "No attendance history found");
+      setError(err.message || "No attendance history found")
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-  
-  
-  
+  }
 
   const handleEmployeePress = (employee) => {
     setSelectedEmployee(employee)
@@ -127,16 +140,101 @@ const AttendanceScreen = () => {
     setViewMode("history")
   }
 
-  const handleCheckInOut = () => {
-    setIsCheckedIn(!isCheckedIn)
-    // TODO: Implement actual check-in/out logic
+  const getCurrentLocation = async () => {
+    if (locationPermission !== "granted") {
+      Alert.alert("Location Permission Required", "Please enable location services to check in/out.", [{ text: "OK" }])
+      return null
+    }
+
+    try {
+      let location
+      if (Platform.OS === "android") {
+        // For Android, we'll use getCurrentPositionAsync with a timeout
+        location = await Promise.race([
+          Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+            timeInterval: 5000, // Update every 5 seconds
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Location request timed out")), 15000)),
+        ])
+      } else {
+        // For iOS, we'll use the original method
+        location = await Location.getCurrentPositionAsync({})
+      }
+      return location
+    } catch (error) {
+      console.error("Error getting location:", error)
+      Alert.alert(
+        "Location Error",
+        "Unable to get your current location. Please check your device settings and try again.",
+        [{ text: "OK" }],
+      )
+      return null
+    }
   }
 
-  const handleEmployeeCheckInOut = (employeeId) => {
-    // This function needs to be updated to reflect changes from the backend
-    // For now it will just toggle the isCheckedIn state
-    // In a real application, you would make an API call to update the employee's check-in/out status
-    setEmployees(employees.map((emp) => (emp.id === employeeId ? { ...emp, isCheckedIn: !emp.isCheckedIn } : emp)))
+  const handleCheckInOut = async () => {
+    setIsLoading(true)
+    try {
+      const location = await getCurrentLocation()
+      if (!location) {
+        setIsLoading(false)
+        return
+      }
+
+      const { latitude, longitude } = location.coords
+      const currentTime = new Date().toISOString()
+
+      if (isCheckedIn) {
+        await checkOut(userData.id, currentTime, latitude, longitude)
+        setIsCheckedIn(false)
+        setTodayAttendance({ ...todayAttendance, check_out: currentTime })
+        Alert.alert("Success", "You have been checked out.")
+      } else {
+        await checkIn(userData.id, currentTime, latitude, longitude)
+        setIsCheckedIn(true)
+        setTodayAttendance({ check_in: currentTime, check_out: null })
+        Alert.alert("Success", "You have been checked in.")
+      }
+
+      // Refresh attendance history
+      fetchAttendanceHistory(userData.id)
+    } catch (error) {
+      console.error("Check-in/out error:", error)
+      Alert.alert("Error", error.message || "An error occurred during check-in/out.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEmployeeCheckInOut = async (employeeId) => {
+    setIsLoading(true)
+    try {
+      const employee = employees.find((emp) => emp.id === employeeId)
+      const location = await getCurrentLocation()
+      if (!location) {
+        setIsLoading(false)
+        return
+      }
+
+      const { latitude, longitude } = location.coords
+      const currentTime = new Date().toISOString()
+
+      if (employee.isCheckedIn) {
+        await checkOut(employeeId, currentTime, latitude, longitude)
+      } else {
+        await checkIn(employeeId, currentTime, latitude, longitude)
+      }
+
+      // Update the local state
+      setEmployees(employees.map((emp) => (emp.id === employeeId ? { ...emp, isCheckedIn: !emp.isCheckedIn } : emp)))
+
+      Alert.alert("Success", `Employee ${employee.isCheckedIn ? "checked out" : "checked in"} successfully.`)
+    } catch (error) {
+      Alert.alert("Error", error.message || "An error occurred during employee check-in/out.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const renderPersonalAttendance = () => (
@@ -150,6 +248,24 @@ const AttendanceScreen = () => {
           isActive={isCheckedIn}
         />
       </View>
+      {locationPermission !== "granted" && (
+        <Text style={styles.warningText}>
+          Location permission is required for attendance. Please enable it in your device settings.
+        </Text>
+      )}
+      {todayAttendance && (
+        <View style={styles.todayAttendance}>
+          <Text style={styles.todayAttendanceTitle}>Today's Attendance:</Text>
+          <Text style={styles.todayAttendanceText}>
+            Check-in:{" "}
+            {todayAttendance.check_in ? new Date(todayAttendance.check_in).toLocaleTimeString() : "Not checked in"}
+          </Text>
+          <Text style={styles.todayAttendanceText}>
+            Check-out:{" "}
+            {todayAttendance.check_out ? new Date(todayAttendance.check_out).toLocaleTimeString() : "Not checked out"}
+          </Text>
+        </View>
+      )}
       <TouchableOpacity
         style={styles.historyButton}
         onPress={() => {
@@ -188,6 +304,7 @@ const AttendanceScreen = () => {
       )}
     </View>
   )
+
   const renderAttendanceHistory = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
@@ -196,7 +313,7 @@ const AttendanceScreen = () => {
       {isLoading ? (
         <ActivityIndicator size="large" color={colors.primary} />
       ) : error ? (
-        <Text style={styles.errorText}>{error}</Text> // Show the error message when no records are found
+        <Text style={styles.errorText}>{error}</Text>
       ) : attendanceHistory.length > 0 ? (
         <FlatList
           data={attendanceHistory}
@@ -213,21 +330,20 @@ const AttendanceScreen = () => {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       ) : (
-        <Text style={styles.noAttendanceText}>No attendance history found</Text> // No records message
+        <Text style={styles.noAttendanceText}>No attendance history found</Text>
       )}
       <TouchableOpacity
         style={styles.backButton}
         onPress={() => {
-          setViewMode(selectedEmployee ? "employees" : "personal");
-          setSelectedEmployee(null);
+          setViewMode(selectedEmployee ? "employees" : "personal")
+          setSelectedEmployee(null)
         }}
       >
         <Ionicons name="arrow-back" size={scale(24)} color={colors.primary} />
         <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
     </View>
-  );
-  
+  )
 
   return (
     <SafeAreaView style={styles.container} edges={["left", "right"]}>
@@ -335,7 +451,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: verticalScale(8),
+    padding: scale(12),
   },
   employeeItem: {
     flexDirection: "row",
@@ -436,6 +552,33 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: "center",
     marginTop: verticalScale(16),
+  },
+  todayAttendance: {
+    marginTop: verticalScale(16),
+    padding: scale(12),
+    backgroundColor: colors.background,
+    borderRadius: scale(8),
+  },
+  todayAttendanceTitle: {
+    ...colors.typography.body,
+    fontSize: moderateScale(16),
+    fontWeight: "bold",
+    color: colors.text.primary,
+    marginBottom: verticalScale(8),
+  },
+  todayAttendanceText: {
+    ...colors.typography.body,
+    fontSize: moderateScale(14),
+    color: colors.text.secondary,
+    marginBottom: verticalScale(4),
+  },
+  warningText: {
+    ...colors.typography.caption,
+    fontSize: moderateScale(14),
+    color: colors.error,
+    textAlign: "center",
+    marginTop: verticalScale(8),
+    marginBottom: verticalScale(16),
   },
 })
 

@@ -106,7 +106,53 @@ const User = {
       [employeeId]
     );
     return result.rows;
-  }
+  },
+  // Find check-in record by employee ID and date
+  async findCheckInByDate(employeeId, date) {
+    const result = await pool.query(
+      `SELECT * FROM hr_attendance 
+       WHERE employee_id = $1 AND DATE(check_in) = $2`,
+      [employeeId, date]
+    );
+    return result.rows[0]; // Returns the record if it exists, otherwise null
+  },
+
+  // Create a new check-in record
+  async createCheckIn(employeeId, checkInData) {
+    const { checkInTime, inLatitude, inLongitude } = checkInData;
+
+    const result = await pool.query(
+      `INSERT INTO hr_attendance (
+         employee_id, 
+         check_in, 
+         in_latitude, 
+         in_longitude, 
+         create_date, 
+         write_date
+       ) VALUES ($1, $2, $3, $4, NOW(), NOW()) RETURNING *`,
+      [employeeId, checkInTime, inLatitude, inLongitude]
+    );
+    return result.rows[0];
+  },
+
+  // Update an existing check-in record with check-out details
+  async updateCheckOut(employeeId, date, checkOutData) {
+    const { checkOutTime, outLatitude, outLongitude } = checkOutData;
+
+    const result = await pool.query(
+      `UPDATE hr_attendance 
+       SET 
+         check_out = $1, 
+         out_latitude = $2, 
+         out_longitude = $3, 
+         worked_hours = EXTRACT(EPOCH FROM ($1 - check_in)) / 3600, 
+         write_date = NOW()
+       WHERE employee_id = $4 AND DATE(check_in) = $5 
+       RETURNING *`,
+      [checkOutTime, outLatitude, outLongitude, employeeId, date]
+    );
+    return result.rows[0];
+  },
 };
 
 module.exports = User;
